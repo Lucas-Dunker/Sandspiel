@@ -1,0 +1,20 @@
+{
+  "name": "sandspiel",
+  "version": "1.0.0",
+  "description": "a physics simulator for sand, smoke and more!",
+  "main": "p5.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lucas-Dunker/Sandspiel.git"
+  },
+  "author": "Lucas Dunker",
+  "license": "MIT",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/Lucas-Dunker/Sandspiel/issues"
+  },
+  "homepage": "https://github.com/Lucas-Dunker/Sandspiel#readme"
+}
