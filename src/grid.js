@@ -27,8 +27,9 @@ class Grid {
     return this.grid[index] === 0;
   }
 
-  // TODO: work on this, would ideally set a bunch of pixels at the same time in a circle
-  setCircle(x, y, colorFn, radius = 2, probability = 1.0) {
+  // Set a group of particles at the given coordinates and radius,
+  // with each granule having a percent change to spawn
+  setCircle(x, y, colorFn, radius = 2, probability = 1) {
     let radiusSq = radius * radius;
     for (let y1 = -radius; y1 <= radius; y1++) {
       for (let x1 = -radius; x1 <= radius; x1++) {

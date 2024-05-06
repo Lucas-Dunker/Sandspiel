@@ -1,4 +1,4 @@
-const ZOOM = 15;
+const ZOOM = 10;
 const WIDTH = Math.floor(window.innerWidth / ZOOM) + 1;
 const HEIGHT = Math.floor(window.innerHeight / ZOOM) + 1;
 
@@ -44,13 +44,27 @@ function draw() {
 
     rect(getMousePixelX(), getMousePixelY(), width, height);
   };
-  drawMousePixel(1, 1);
+
+  const drawMouseCircle = (radius) => {
+    fill(SAND_COLOR);
+    noStroke();
+
+    circle(getMousePixelX(), getMousePixelY(), 2 * radius);
+  };
+
+  drawMouseCircle(2);
 
   if (mouseIsPressed) {
     // Left Click - Make some sand!
     if (mouseButton === LEFT) {
       let color = varyColor(SAND_COLOR);
-      Canvas.set(getMousePixelX(), getMousePixelY(), color);
+      Canvas.setCircle(
+        getMousePixelX(),
+        getMousePixelY(),
+        () => varyColor(SAND_COLOR),
+        2,
+        0.5
+      );
     }
     // Right Click - Clear the Canvas
     if (mouseButton === RIGHT) {
