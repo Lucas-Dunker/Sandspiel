@@ -57,7 +57,6 @@ function draw() {
   if (mouseIsPressed) {
     // Left Click - Make some sand!
     if (mouseButton === LEFT) {
-      let color = varyColor(SAND_COLOR);
       Canvas.setCircle(
         getMousePixelX(),
         getMousePixelY(),
