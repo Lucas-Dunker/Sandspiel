@@ -3,6 +3,9 @@ class Grid {
     this.width = width;
     this.height = height;
     this.clear();
+
+    this.modifiedIndices = new Set();
+    this.cleared = false;
   }
 
   // Clear the grid - using a 1D Array for better compatibility with p5.js
@@ -10,6 +13,8 @@ class Grid {
     this.grid = new Array(this.width * this.height)
       .fill(0)
       .map(() => new Empty());
+
+    this.cleared = true;
   }
 
   // Return the 1D index of the given x and y coordinate
@@ -20,6 +25,7 @@ class Grid {
   // Set an index n the grid to a given particle
   setIndex(i, particle) {
     this.grid[i] = particle;
+    this.modifiedIndices.add(i);
   }
 
   // Set the particle at the given index to an Empty Particle
@@ -38,6 +44,10 @@ class Grid {
 
   // Swap two particles
   swap(a, b) {
+    if (this.grid[a].empty && this.grid[b].empty) {
+      return;
+    }
+
     const temp = this.grid[a];
     this.grid[a] = this.grid[b];
     this.setIndex(a, this.grid[b]);
@@ -64,6 +74,9 @@ class Grid {
 
   // Update all pixels in the grid
   update() {
+    this.cleared = false;
+    this.modifiedIndices = new Set();
+
     // Draw from the end of the list to the beginning
     for (let i = Canvas.grid.length - Canvas.width - 1; i > 0; i--) {
       this.updatePixel(i);
@@ -72,6 +85,10 @@ class Grid {
 
   // Update a single pixel in the grid
   updatePixel(i) {
+    if (this.isEmpty(i)) {
+      return;
+    }
+
     const below = i + Canvas.width;
     const belowLeft = below - 1;
     const belowRight = below + 1;
@@ -84,6 +101,22 @@ class Grid {
       Canvas.swap(i, belowLeft);
     } else if (Canvas.isEmpty(belowRight)) {
       Canvas.swap(i, belowRight);
+    }
+  }
+
+  // Decide whether or not the grid should be updated (to save computation time)
+  needsUpdate() {
+    return this.cleared || this.modifiedIndices.size;
+  }
+
+  // Draw the grid onto the p5.js canvas
+  draw() {
+    if (this.cleared) {
+      clearPixels();
+    } else if (this.modifiedIndices.size) {
+      this.modifiedIndices.forEach((index) => {
+        setPixel(index, this.grid[index].color || color(BACKGROUND_COLOR));
+      });
     }
   }
 }

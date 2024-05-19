@@ -1,4 +1,4 @@
-const ZOOM = 10;
+const ZOOM = 5;
 var WIDTH = Math.floor(window.innerWidth / ZOOM) + 1;
 var HEIGHT = Math.floor(window.innerHeight / ZOOM) + 1;
 
@@ -7,6 +7,7 @@ const BACKGROUND_COLOR = "#0d1014";
 
 var p5Canvas;
 var Canvas = new Grid();
+var isRendering = true;
 
 function setZoom(canvas) {
   canvas.elt.style.width = `${WIDTH * ZOOM}px`;
@@ -43,12 +44,9 @@ function setup() {
 }
 
 function draw() {
-  update();
-
-  Canvas.grid.forEach((particle, index) => {
-    setPixel(index, particle.color || BACKGROUND_COLOR);
-  });
-
+  // Pause all rendering unless Sandspiel is being interacted with
+  Canvas.draw();
+  Canvas.update();
   updatePixels();
   drawMouseCircle(4);
 
@@ -68,10 +66,10 @@ function draw() {
       Canvas.clear();
     }
   }
-}
 
-function update() {
-  Canvas.update();
+  if (!Canvas.needsUpdate()) {
+    pause();
+  }
 }
 
 function drawMouseCircle(radius) {
@@ -86,13 +84,21 @@ const getMousePixelX = () => floor(constrain(mouseX, 0, width - 1));
 const getMousePixelY = () => floor(constrain(mouseY, 0, height - 1));
 
 // Translate a grid pixel index to a p5.js pixel
-function setPixel(i, color) {
+const setPixel = (i, color) => {
   const index = 4 * i;
   pixels[index] = red(color);
   pixels[index + 1] = green(color);
   pixels[index + 2] = blue(color);
   pixels[index + 3] = alpha(color);
-}
+};
+
+// Clear all pixels on the p5.js canvas
+const clearPixels = () => {
+  for (let i = 0; i < pixels.length / 4; i += 1) {
+    setPixel(i, color(BACKGROUND_COLOR));
+  }
+  updatePixels();
+};
 
 // Slightly vary the hsl value of a given color
 const varyColor = (color) => {
@@ -103,3 +109,33 @@ const varyColor = (color) => {
   pixel_lightness = constrain(pixel_lightness, 0, 100);
   return `hsl(${pixel_hue}, ${pixel_saturation}%, ${pixel_lightness}%)`;
 };
+
+const resume = () => {
+  if (!isRendering) {
+    loop();
+    isRendering = true;
+  }
+};
+
+const pause = () => {
+  if (isRendering) {
+    noLoop();
+    isRendering = false;
+  }
+};
+
+function mouseDragged() {
+  resume();
+}
+
+function mouseMoved() {
+  resume();
+}
+
+function mousePressed() {
+  resume();
+}
+
+function touchStarted() {
+  resume();
+}
