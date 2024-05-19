@@ -8,9 +8,10 @@ class Particle {
 }
 
 class Sand extends Particle {
-  static SAND_COLOR = "#dcb159";
-  constructor() {
-    super({ color: varyColor(Sand.baseColor) });
+  static baseColor = "#dcb159";
+  constructor(color) {
+    const sandColor = color ?? Sand.baseColor;
+    super({ color: sandColor });
   }
 }
 
