@@ -6,6 +6,8 @@ class Grid {
 
     this.modifiedIndices = new Set();
     this.cleared = false;
+
+    this.rowCount = Math.floor(this.grid.length / this.width);
   }
 
   // Clear the grid - using a 1D Array for better compatibility with p5.js
@@ -78,8 +80,14 @@ class Grid {
     this.modifiedIndices = new Set();
 
     // Draw from the end of the list to the beginning
-    for (let i = Canvas.grid.length - Canvas.width - 1; i > 0; i--) {
-      this.updatePixel(i);
+    for (let row = this.rowCount - 1; row >= 0; row--) {
+      const rowOffset = row * this.width;
+      const leftToRight = Math.random() > 0.5;
+      for (let i = 0; i < this.width; i++) {
+        // Go from right to left or left to right depending on our random value
+        const columnOffset = leftToRight ? i : -i - 1 + this.width;
+        this.updatePixel(rowOffset + columnOffset);
+      }
     }
   }
 
@@ -89,18 +97,19 @@ class Grid {
       return;
     }
 
-    const below = i + Canvas.width;
+    const below = i + this.width;
     const belowLeft = below - 1;
     const belowRight = below + 1;
+    const column = i % this.width;
 
     // If there are no pixels below, move it down;
     // if there pixels down but no pixels diagonally, move the sand diagonally
-    if (Canvas.isEmpty(below)) {
-      Canvas.swap(i, below);
-    } else if (Canvas.isEmpty(belowLeft)) {
-      Canvas.swap(i, belowLeft);
-    } else if (Canvas.isEmpty(belowRight)) {
-      Canvas.swap(i, belowRight);
+    if (this.isEmpty(below)) {
+      this.swap(i, below);
+    } else if (this.isEmpty(belowLeft) && belowLeft % this.width < column) {
+      this.swap(i, belowLeft);
+    } else if (this.isEmpty(belowRight) && belowRight % this.width > column) {
+      this.swap(i, belowRight);
     }
   }
 
