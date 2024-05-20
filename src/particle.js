@@ -53,7 +53,7 @@ class Sand extends Particle {
 }
 
 class Empty extends Particle {
-  static baseColor = window.background;
+  static baseColor = "#0d1014";
   constructor() {
     super({ empty: true });
   }

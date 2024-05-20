@@ -9,6 +9,28 @@ var p5Canvas;
 var Canvas = new Grid();
 var isRendering = true;
 
+var currentParticle = "Sand";
+
+const makeParticle = () => {
+  if (currentParticle == "Sand") {
+    return () => new Sand(color(varyColor(SAND_COLOR)));
+  } else if (currentParticle == "Empty") {
+    return () => new Empty();
+  } else {
+    return;
+  }
+};
+
+const particleColor = () => {
+  if (currentParticle == "Sand") {
+    return SAND_COLOR;
+  } else if (currentParticle == "Empty") {
+    return BACKGROUND_COLOR;
+  } else {
+    return;
+  }
+};
+
 function setZoom(canvas) {
   canvas.elt.style.width = `${WIDTH * ZOOM}px`;
   canvas.elt.style.height = `${HEIGHT * ZOOM}px`;
@@ -25,9 +47,6 @@ function setup() {
   //Disable normal right-clicking behavior
   for (let element of document.getElementsByClassName("p5Canvas")) {
     element.addEventListener("contextmenu", (e) => e.preventDefault());
-    element.addEventListener("touchstart", (e) => e.preventDefault());
-    element.addEventListener("touchend", (e) => e.preventDefault());
-    element.addEventListener("touchmove", (e) => e.preventDefault());
   }
 
   frameRate(60);
@@ -41,6 +60,23 @@ function setup() {
   noCursor();
 
   Canvas.initialize(WIDTH, HEIGHT);
+
+  let sandButton = createButton("SAND");
+  sandButton.position(110, 110);
+  sandButton.mousePressed(sandButtonPress);
+  sandButton.style("background-color", SAND_COLOR);
+
+  let emptyButton = createButton("EMPTY");
+  emptyButton.position(170, 110);
+  emptyButton.mousePressed(emptyButtonPress);
+  emptyButton.style("background-color", BACKGROUND_COLOR);
+  emptyButton.style("color", "#FAF9F6");
+
+  let clearButton = createButton("CLEAR");
+  clearButton.position(240, 110);
+  clearButton.mousePressed(clearButtonPress);
+  clearButton.style("background-color", BACKGROUND_COLOR);
+  clearButton.style("color", "#FAF9F6");
 }
 
 function draw() {
@@ -48,7 +84,7 @@ function draw() {
   Canvas.draw();
   Canvas.update();
   updatePixels();
-  drawMouseCircle(4);
+  drawMouseCircle(3, particleColor());
 
   if (mouseIsPressed) {
     // Left Click - Make some sand!
@@ -56,7 +92,7 @@ function draw() {
       Canvas.setCircle(
         getMousePixelX(),
         getMousePixelY(),
-        () => new Sand(color(varyColor(SAND_COLOR))),
+        makeParticle(),
         2,
         0.5
       );
@@ -70,13 +106,19 @@ function draw() {
   if (!Canvas.needsUpdate()) {
     pause();
   }
+
+  fill(SAND_COLOR);
+  text("SANDSPIEL!", 10, 20);
 }
 
-function drawMouseCircle(radius) {
-  fill(SAND_COLOR);
-  noStroke();
-
+function drawMouseCircle(radius, particleColor) {
+  fill(particleColor);
+  stroke("#fff");
+  if (particleColor !== Empty.baseColor) {
+    noStroke();
+  }
   circle(getMousePixelX(), getMousePixelY(), 2 * radius);
+  noStroke();
 }
 
 // Translate mouse coordinates to the pixel grid
@@ -110,6 +152,7 @@ const varyColor = (color) => {
   return `hsl(${pixel_hue}, ${pixel_saturation}%, ${pixel_lightness}%)`;
 };
 
+// Pausing + Resuming functionality to prevent unncessesary rendering
 const resume = () => {
   if (!isRendering) {
     loop();
@@ -138,4 +181,16 @@ function mousePressed() {
 
 function touchStarted() {
   resume();
+}
+
+function sandButtonPress() {
+  currentParticle = "Sand";
+}
+
+function emptyButtonPress() {
+  currentParticle = "Empty";
+}
+
+function clearButtonPress() {
+  Canvas.clear();
 }
