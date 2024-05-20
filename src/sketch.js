@@ -1,3 +1,5 @@
+// ------- TOP-LEVEL VARIABLES ------------------
+
 const ZOOM = 5;
 var WIDTH = Math.floor(window.innerWidth / ZOOM) + 1;
 var HEIGHT = Math.floor(window.innerHeight / ZOOM) + 1;
@@ -11,36 +13,18 @@ var isRendering = true;
 
 var currentParticle = "Sand";
 
-const makeParticle = () => {
-  if (currentParticle == "Sand") {
-    return () => new Sand(color(varyColor(SAND_COLOR)));
-  } else if (currentParticle == "Empty") {
-    return () => new Empty();
-  } else {
-    return;
-  }
-};
-
-const particleColor = () => {
-  if (currentParticle == "Sand") {
-    return SAND_COLOR;
-  } else if (currentParticle == "Empty") {
-    return BACKGROUND_COLOR;
-  } else {
-    return;
-  }
-};
-
-function setZoom(canvas) {
-  canvas.elt.style.width = `${WIDTH * ZOOM}px`;
-  canvas.elt.style.height = `${HEIGHT * ZOOM}px`;
-}
+// ----------------------------------------------
 
 function windowResized() {
   WIDTH = Math.floor(window.innerWidth / ZOOM) + 1;
   HEIGHT = Math.floor(window.innerHeight / ZOOM) + 1;
   resizeCanvas(WIDTH, HEIGHT);
   setup();
+}
+
+function setZoom(canvas) {
+  canvas.elt.style.width = `${WIDTH * ZOOM}px`;
+  canvas.elt.style.height = `${HEIGHT * ZOOM}px`;
 }
 
 function setup() {
@@ -77,6 +61,18 @@ function setup() {
   clearButton.mousePressed(clearButtonPress);
   clearButton.style("background-color", BACKGROUND_COLOR);
   clearButton.style("color", "#FAF9F6");
+}
+
+function sandButtonPress() {
+  currentParticle = "Sand";
+}
+
+function emptyButtonPress() {
+  currentParticle = "Empty";
+}
+
+function clearButtonPress() {
+  Canvas.clear();
 }
 
 function draw() {
@@ -121,6 +117,26 @@ function drawMouseCircle(radius, particleColor) {
   noStroke();
 }
 
+const makeParticle = () => {
+  if (currentParticle == "Sand") {
+    return () => new Sand(color(varyColor(SAND_COLOR)));
+  } else if (currentParticle == "Empty") {
+    return () => new Empty();
+  } else {
+    return;
+  }
+};
+
+const particleColor = () => {
+  if (currentParticle == "Sand") {
+    return SAND_COLOR;
+  } else if (currentParticle == "Empty") {
+    return BACKGROUND_COLOR;
+  } else {
+    return;
+  }
+};
+
 // Translate mouse coordinates to the pixel grid
 const getMousePixelX = () => floor(constrain(mouseX, 0, width - 1));
 const getMousePixelY = () => floor(constrain(mouseY, 0, height - 1));
@@ -152,7 +168,7 @@ const varyColor = (color) => {
   return `hsl(${pixel_hue}, ${pixel_saturation}%, ${pixel_lightness}%)`;
 };
 
-// Pausing + Resuming functionality to prevent unncessesary rendering
+// --------------------------- PAUSING + RESUMING -----------------------------------------
 const resume = () => {
   if (!isRendering) {
     loop();
@@ -181,16 +197,4 @@ function mousePressed() {
 
 function touchStarted() {
   resume();
-}
-
-function sandButtonPress() {
-  currentParticle = "Sand";
-}
-
-function emptyButtonPress() {
-  currentParticle = "Empty";
-}
-
-function clearButtonPress() {
-  Canvas.clear();
 }
