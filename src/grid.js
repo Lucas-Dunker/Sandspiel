@@ -86,17 +86,35 @@ class Grid {
       for (let i = 0; i < this.width; i++) {
         // Go from right to left or left to right depending on our random value
         const columnOffset = leftToRight ? i : -i - 1 + this.width;
-        this.updatePixel(rowOffset + columnOffset);
+        let index = rowOffset + columnOffset;
+
+        if (this.isEmpty(index)) {
+          continue;
+        }
+
+        const currentParticle = this.grid[index];
+        currentParticle.update();
+
+        if (!currentParticle.modified) {
+          continue;
+        }
+
+        this.modifiedIndices.add(index);
+        for (let v = 0; v < currentParticle.getUpdateCount(); v++) {
+          const newIndex = this.updatePixel(index);
+          if (newIndex !== index) {
+            index = newIndex;
+          } else {
+            currentParticle.resetVelocity(); // Collision with another particle
+            break;
+          }
+        }
       }
     }
   }
 
   // Update a single pixel in the grid
   updatePixel(i) {
-    if (this.isEmpty(i)) {
-      return;
-    }
-
     const below = i + this.width;
     const belowLeft = below - 1;
     const belowRight = below + 1;
@@ -106,11 +124,16 @@ class Grid {
     // if there pixels down but no pixels diagonally, move the sand diagonally
     if (this.isEmpty(below)) {
       this.swap(i, below);
+      return below;
     } else if (this.isEmpty(belowLeft) && belowLeft % this.width < column) {
       this.swap(i, belowLeft);
+      return belowLeft;
     } else if (this.isEmpty(belowRight) && belowRight % this.width > column) {
       this.swap(i, belowRight);
+      return belowRight;
     }
+
+    return i;
   }
 
   // Decide whether or not the grid should be updated (to save computation time)
