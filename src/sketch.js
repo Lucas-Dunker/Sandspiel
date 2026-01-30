@@ -6,6 +6,7 @@ var HEIGHT = Math.floor(window.innerHeight / ZOOM) + 1;
 
 const SAND_COLOR = "#dcb159";
 const BACKGROUND_COLOR = "#0d1014";
+const WOOD_COLOR = "#46281d";
 
 var p5Canvas;
 var Canvas = new Grid();
@@ -33,8 +34,12 @@ function setup() {
     element.addEventListener("contextmenu", (e) => e.preventDefault());
   }
 
+  // Remove existing buttons if they exist
+  let buttons = document.querySelectorAll("button");
+  buttons.forEach((button) => button.remove());
+
   frameRate(60);
-  pixelDensity(1);
+  pixelDensity(window.devicePixelRatio);
 
   p5Canvas = createCanvas(WIDTH, HEIGHT);
   setZoom(p5Canvas);
@@ -46,18 +51,28 @@ function setup() {
   Canvas.initialize(WIDTH, HEIGHT);
 
   let sandButton = createButton("SAND");
-  sandButton.position(110, 110);
+  sandButton.size(80, 30);
+  sandButton.position(0, 5);
   sandButton.mousePressed(sandButtonPress);
   sandButton.style("background-color", SAND_COLOR);
 
+  let woodButton = createButton("WOOD");
+  woodButton.size(80, 30);
+  woodButton.position(80, 5);
+  woodButton.mousePressed(woodButtonPress);
+  woodButton.style("background-color", WOOD_COLOR);
+  woodButton.style("color", "#FAF9F6");
+
   let emptyButton = createButton("EMPTY");
-  emptyButton.position(170, 110);
+  emptyButton.size(80, 30);
+  emptyButton.position(160, 5);
   emptyButton.mousePressed(emptyButtonPress);
   emptyButton.style("background-color", BACKGROUND_COLOR);
   emptyButton.style("color", "#FAF9F6");
 
   let clearButton = createButton("CLEAR");
-  clearButton.position(240, 110);
+  clearButton.size(80, 30);
+  clearButton.position(240, 5);
   clearButton.mousePressed(clearButtonPress);
   clearButton.style("background-color", BACKGROUND_COLOR);
   clearButton.style("color", "#FAF9F6");
@@ -75,8 +90,11 @@ function clearButtonPress() {
   Canvas.clear();
 }
 
+function woodButtonPress() {
+  currentParticle = "Wood";
+}
+
 function draw() {
-  // Pause all rendering unless Sandspiel is being interacted with
   Canvas.draw();
   Canvas.update();
   updatePixels();
@@ -90,7 +108,7 @@ function draw() {
         getMousePixelY(),
         makeParticle(),
         2,
-        0.5
+        0.5,
       );
     }
     // Right Click - Clear the Canvas
@@ -99,12 +117,15 @@ function draw() {
     }
   }
 
+  // Pause all rendering unless Sandspiel is being interacted with
   if (!Canvas.needsUpdate()) {
     pause();
   }
 
   fill(SAND_COLOR);
-  text("SANDSPIEL!", 10, 20);
+  textSize(width / 13);
+  textAlign(CENTER, TOP);
+  text("SANDSPIEL", width / 2, 10);
 }
 
 function drawMouseCircle(radius, particleColor) {
@@ -122,6 +143,8 @@ const makeParticle = () => {
     return () => new Sand(color(varyColor(SAND_COLOR)));
   } else if (currentParticle == "Empty") {
     return () => new Empty();
+  } else if (currentParticle == "Wood") {
+    return () => new Wood(color(varyColor(WOOD_COLOR)));
   } else {
     return;
   }
@@ -132,6 +155,8 @@ const particleColor = () => {
     return SAND_COLOR;
   } else if (currentParticle == "Empty") {
     return BACKGROUND_COLOR;
+  } else if (currentParticle == "Wood") {
+    return WOOD_COLOR;
   } else {
     return;
   }

@@ -58,3 +58,47 @@ class Empty extends Particle {
     super({ empty: true });
   }
 }
+
+class Wood extends Particle {
+  static baseColor = "#46281d";
+  constructor(color) {
+    const woodColor = color ?? Wood.baseColor;
+    super({ color: woodColor });
+    this.maxSpeed = 0;
+    this.acceleration = 0;
+    this.velocity = 0;
+    this.modified = false;
+  }
+
+  updateVelocity() {
+    let newVelocity = this.velocity + this.acceleration;
+
+    if (Math.abs(newVelocity) > this.maxSpeed) {
+      newVelocity = Math.sign(newVelocity) * this.maxSpeed;
+    }
+
+    this.velocity = newVelocity;
+  }
+
+  resetVelocity() {
+    this.velocity = 0;
+  }
+
+  getUpdateCount() {
+    const abs = Math.abs(this.velocity);
+    const floored = Math.floor(abs);
+    const mod = abs - floored;
+
+    // Treat a remainder (e.g. 0.5) as a random chance to update
+    return floored + (Math.random() < mod ? 1 : 0);
+  }
+
+  update() {
+    if ((this.maxSpeed ?? 0) === 0) {
+      this.modified = false;
+      return;
+    }
+    this.updateVelocity();
+    this.modified = this.velocity !== 0;
+  }
+}
