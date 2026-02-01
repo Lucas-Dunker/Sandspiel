@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 /**
  * Base class for particle behaviors.
  */
@@ -11,21 +12,31 @@ class Behavior {
 }
 
 /**
- * Behavior that makes particles fall downward with gravity.
+ * Behavior that makes particles move vertically (up or down) with velocity.
  */
-class MovesDown extends Behavior {
+class MovesVertically extends Behavior {
   /**
-   * Creates a new MovesDown behavior.
+   * Creates a new MovesVertically behavior.
    * @param {Object} [options={}] - Configuration options.
-   * @param {number} [options.maxSpeed=0] - Maximum falling speed.
-   * @param {number} [options.acceleration=0] - Acceleration per update.
+   * @param {number} [options.maxSpeed=0] - Maximum speed (absolute value).
+   * @param {number} [options.acceleration=0] - Acceleration per update (negative = up, positive = down).
    * @param {number} [options.velocity=0] - Initial velocity.
+   * @param {boolean} [options.drifts=false] - Whether particle drifts horizontally when blocked.
+   * @param {number} [options.driftChance=0.5] - Probability of drifting each frame.
    */
-  constructor({ maxSpeed = 0, acceleration = 0, velocity = 0 } = {}) {
+  constructor({
+    maxSpeed = 0,
+    acceleration = 0,
+    velocity = 0,
+    drifts = false,
+    driftChance = 0.5,
+  } = {}) {
     super();
     this.maxSpeed = maxSpeed;
     this.acceleration = acceleration;
     this.velocity = velocity;
+    this.drifts = drifts;
+    this.driftChance = driftChance;
   }
 
   /**
@@ -77,18 +88,48 @@ class MovesDown extends Behavior {
   }
 
   /**
+   * Gets the vertical direction of movement.
+   * @returns {number} 1 for down, -1 for up, 0 for stationary.
+   */
+  getDirection() {
+    return Math.sign(this.velocity);
+  }
+
+  /**
    * Gets possible movement destinations with their weights.
    * @param {Grid} grid - The grid containing the particle.
    * @param {number} i - The current index of the particle.
    * @returns {{moves: number[], weights: number[]}} Possible moves and their weights.
    */
   possibleMoves(grid, i) {
-    const nextDelta = Math.sign(this.velocity) * grid.width;
+    const direction = this.getDirection();
+    if (direction === 0) {
+      return { moves: [], weights: [] };
+    }
+
+    const nextDelta = direction * grid.width;
     const nextVertical = i + nextDelta;
-    const column = i % grid.width;
+    const currentRow = Math.floor(i / grid.width);
+    const currentCol = i % grid.width;
 
     const moves = [];
     const weights = [];
+
+    // Check bounds - prevent going above top or below bottom
+    if (nextVertical < 0 || nextVertical >= grid.grid.length) {
+      // If drifting enabled, try horizontal movement at boundary
+      if (this.drifts && Math.random() < this.driftChance) {
+        this.addHorizontalMoves(
+          grid,
+          i,
+          currentRow,
+          currentCol,
+          moves,
+          weights,
+        );
+      }
+      return { moves, weights };
+    }
 
     if (this.canPassThrough(grid.grid[nextVertical])) {
       moves.push(nextVertical);
@@ -96,27 +137,72 @@ class MovesDown extends Behavior {
     } else {
       const nextLeft = nextVertical - 1;
       const nextRight = nextVertical + 1;
+      const nextRow = Math.floor(nextVertical / grid.width);
 
-      // Check left (ensure no wrap)
+      // Check left (ensure no wrap and in bounds)
       if (
-        this.canPassThrough(grid.grid[nextLeft]) &&
-        nextLeft % grid.width < column
+        nextLeft >= 0 &&
+        Math.floor(nextLeft / grid.width) === nextRow &&
+        this.canPassThrough(grid.grid[nextLeft])
       ) {
         moves.push(nextLeft);
         weights.push(1);
       }
 
-      // Check right (ensure no wrap)
+      // Check right (ensure no wrap and in bounds)
       if (
-        this.canPassThrough(grid.grid[nextRight]) &&
-        nextRight % grid.width > column
+        nextRight < grid.grid.length &&
+        Math.floor(nextRight / grid.width) === nextRow &&
+        this.canPassThrough(grid.grid[nextRight])
       ) {
         moves.push(nextRight);
         weights.push(1);
       }
+
+      // If blocked and drifting enabled, try pure horizontal movement
+      if (
+        moves.length === 0 &&
+        this.drifts &&
+        Math.random() < this.driftChance
+      ) {
+        this.addHorizontalMoves(
+          grid,
+          i,
+          currentRow,
+          currentCol,
+          moves,
+          weights,
+        );
+      }
     }
 
     return { moves, weights };
+  }
+
+  /**
+   * Adds horizontal movement options to the moves array.
+   * @param {Grid} grid - The grid containing the particle.
+   * @param {number} i - The current index.
+   * @param {number} currentRow - The current row.
+   * @param {number} currentCol - The current column.
+   * @param {number[]} moves - Array to add moves to.
+   * @param {number[]} weights - Array to add weights to.
+   */
+  addHorizontalMoves(grid, i, currentRow, currentCol, moves, weights) {
+    const left = i - 1;
+    const right = i + 1;
+
+    // Check left
+    if (currentCol > 0 && this.canPassThrough(grid.grid[left])) {
+      moves.push(left);
+      weights.push(1);
+    }
+
+    // Check right
+    if (currentCol < grid.width - 1 && this.canPassThrough(grid.grid[right])) {
+      moves.push(right);
+      weights.push(1);
+    }
   }
 
   /**
@@ -190,6 +276,110 @@ class MovesDown extends Behavior {
 }
 
 /**
+ * Behavior that makes particles fall downward with gravity.
+ * @extends MovesVertically
+ */
+class MovesDown extends MovesVertically {
+  /**
+   * Creates a new MovesDown behavior.
+   * @param {Object} [options={}] - Configuration options.
+   * @param {number} [options.maxSpeed=0] - Maximum falling speed.
+   * @param {number} [options.acceleration=0] - Acceleration per update (positive).
+   * @param {boolean} [options.drifts=false] - Whether particle drifts horizontally.
+   * @param {number} [options.driftChance=0.5] - Probability of drifting.
+   */
+  constructor({
+    maxSpeed = 0,
+    acceleration = 0,
+    drifts = false,
+    driftChance = 0.5,
+  } = {}) {
+    super({
+      maxSpeed,
+      acceleration: Math.abs(acceleration),
+      velocity: 0,
+      drifts,
+      driftChance,
+    });
+  }
+}
+
+/**
+ * Behavior that makes particles rise upward.
+ * @extends MovesVertically
+ */
+class MovesUp extends MovesVertically {
+  /**
+   * Creates a new MovesUp behavior.
+   * @param {Object} [options={}] - Configuration options.
+   * @param {number} [options.maxSpeed=0] - Maximum rising speed.
+   * @param {number} [options.acceleration=0] - Acceleration per update (will be negated).
+   * @param {boolean} [options.drifts=false] - Whether particle drifts horizontally.
+   * @param {number} [options.driftChance=0.5] - Probability of drifting.
+   */
+  constructor({
+    maxSpeed = 0,
+    acceleration = 0,
+    drifts = false,
+    driftChance = 0.5,
+  } = {}) {
+    super({
+      maxSpeed,
+      acceleration: -Math.abs(acceleration),
+      velocity: 0,
+      drifts,
+      driftChance,
+    });
+  }
+}
+
+/**
+ * Behavior that gives particles a limited lifespan.
+ */
+class LimitedLife extends Behavior {
+  /**
+   * Creates a new LimitedLife behavior.
+   * @param {number} lifetime - The number of frames the particle lives.
+   * @param {Object} [options={}] - Configuration options.
+   * @param {Function} [options.onTick] - Callback called each frame with (behavior, particle, grid).
+   * @param {Function} [options.onDeath] - Callback called when lifetime expires with (behavior, particle, grid).
+   */
+  constructor(lifetime, { onTick, onDeath } = {}) {
+    super();
+    this.lifetime = lifetime;
+    this.remainingLife = this.lifetime;
+    this.onTick = onTick ?? (() => {});
+    this.onDeath = onDeath ?? (() => {});
+  }
+
+  /**
+   * Gets the percentage of life remaining (0 to 1).
+   * @returns {number} The life percentage.
+   */
+  getLifePercent() {
+    return this.remainingLife / this.lifetime;
+  }
+
+  /**
+   * Updates the particle's remaining life and triggers callbacks.
+   * @param {Particle} particle - The particle to update.
+   * @param {Grid} grid - The grid containing the particle.
+   */
+  update(particle, grid) {
+    this.onTick(this, particle, grid);
+
+    this.remainingLife--;
+
+    if (this.remainingLife <= 0) {
+      this.onDeath(this, particle, grid);
+      return;
+    }
+
+    grid.onModified(particle.index);
+  }
+}
+
+/**
  * Base class for all particles in the simulation.
  */
 class Particle {
@@ -208,6 +398,7 @@ class Particle {
     this.color = color;
     this.empty = empty;
     this.index = -1;
+    this.lastUpdateFrame = -1;
   }
 
   /**
@@ -276,5 +467,50 @@ class Wood extends Particle {
    */
   constructor(color) {
     super({ color: color ?? Wood.baseColor, behaviors: [] });
+  }
+}
+
+/**
+ * Smoke particle that rises upward and fades over time.
+ */
+class Smoke extends Particle {
+  /** @type {string} The default smoke color. */
+  static baseColor = "#4C4A4D";
+
+  /**
+   * Creates a new smoke particle.
+   * @param {string} [color] - Optional custom color.
+   */
+  constructor(color) {
+    const onTick = (behavior, particle, grid) => {
+      const pct = behavior.getLifePercent();
+      particle.color.setAlpha(Math.floor(255 * pct));
+    };
+
+    const onDeath = (_, particle, grid) => {
+      grid.clearIndex(particle.index);
+    };
+
+    // Convert color string to p5.Color so setAlpha works
+    const smokeColor =
+      typeof color === "string"
+        ? window.color(color)
+        : (color ?? window.color(Smoke.baseColor));
+
+    super({
+      color: smokeColor,
+      behaviors: [
+        new MovesUp({
+          maxSpeed: 0.5,
+          acceleration: 0.01,
+          drifts: true,
+          driftChance: 30,
+        }),
+        new LimitedLife(10 + 400 * Math.random(), {
+          onTick,
+          onDeath,
+        }),
+      ],
+    });
   }
 }

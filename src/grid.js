@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable no-undef */
 /**
  * Represents a 2D grid of particles for the Sandspiel simulation.
  */
@@ -14,15 +16,18 @@ class Grid {
     this.modifiedIndices = new Set();
     this.cleared = false;
     this.rowCount = Math.floor(this.grid.length / this.width);
+    this.updateFrame = 0;
   }
 
   /**
    * Updates all particles in the grid from bottom to top,
    * with random left-to-right or right-to-left traversal per row.
+   * Tracks which particles have been updated to prevent double-updates.
    */
   update() {
     this.cleared = false;
     this.modifiedIndices.clear();
+    this.updateFrame++;
 
     for (let row = this.rowCount - 1; row >= 0; row--) {
       const rowOffset = row * this.width;
@@ -31,7 +36,15 @@ class Grid {
       for (let i = 0; i < this.width; i++) {
         const columnOffset = leftToRight ? i : this.width - 1 - i;
         const index = rowOffset + columnOffset;
-        this.grid[index].update(this);
+        const particle = this.grid[index];
+
+        // Skip if already updated this frame
+        if (particle.lastUpdateFrame === this.updateFrame) {
+          continue;
+        }
+
+        particle.lastUpdateFrame = this.updateFrame;
+        particle.update(this);
       }
     }
   }

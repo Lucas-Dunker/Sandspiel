@@ -16,5 +16,10 @@
   "bugs": {
     "url": "https://github.com/Lucas-Dunker/Sandspiel/issues"
   },
-  "homepage": "https://github.com/Lucas-Dunker/Sandspiel#readme"
+  "homepage": "https://github.com/Lucas-Dunker/Sandspiel#readme",
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "eslint": "^9.39.2",
+    "globals": "^17.3.0"
+  }
 }

@@ -1,9 +1,12 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable no-undef */
 // ------- TOP-LEVEL VARIABLES ------------------
 
 const ZOOM = 5;
 const SAND_COLOR = "#dcb159";
 const BACKGROUND_COLOR = "#0d1014";
 const WOOD_COLOR = "#46281d";
+const SMOKE_COLOR = "#4C4A4D";
 
 let WIDTH = Math.floor(window.innerWidth / ZOOM) + 1;
 let HEIGHT = Math.floor(window.innerHeight / ZOOM) + 1;
@@ -80,6 +83,13 @@ function setup() {
   );
   createParticleButton("CLEAR", 240, BACKGROUND_COLOR, "#FAF9F6", () =>
     Canvas.clear(),
+  );
+  createParticleButton(
+    "SMOKE",
+    320,
+    SMOKE_COLOR,
+    "#FAF9F6",
+    () => (currentParticle = "Smoke"),
   );
 }
 
@@ -159,6 +169,13 @@ function makeParticle() {
     Sand: () => new Sand(varyColor(SAND_COLOR)),
     Empty: () => new Empty(),
     Wood: () => new Wood(varyColor(WOOD_COLOR)),
+    Smoke: () => {
+      const variedColor = varyColor(SMOKE_COLOR, {
+        lightFn: () => random(-5, 5),
+        satFn: () => random(-5, 0),
+      });
+      return new Smoke(color(variedColor));
+    },
   };
   return particleFactories[currentParticle];
 }
@@ -172,6 +189,7 @@ function particleColor() {
     Sand: SAND_COLOR,
     Empty: BACKGROUND_COLOR,
     Wood: WOOD_COLOR,
+    Smoke: SMOKE_COLOR,
   };
   return colors[currentParticle];
 }
@@ -215,12 +233,18 @@ function clearPixels() {
 /**
  * Slightly varies the HSL values of a color for visual variety.
  * @param {string} baseColor - The base color to vary.
+ * @param {Object} [options={}] - Functions to vary hue, saturation, and lightness.
  * @returns {string} A varied HSL color string.
  */
-function varyColor(baseColor) {
-  const h = floor(hue(baseColor));
-  const s = constrain(saturation(baseColor) + floor(random(-20, 0)), 0, 100);
-  const l = constrain(lightness(baseColor) + floor(random(-10, 10)), 0, 100);
+function varyColor(baseColor, { hueFn, satFn, lightFn } = {}) {
+  hueFn = hueFn ?? (() => 0);
+  satFn = satFn ?? (() => random(-20, 0));
+  lightFn = lightFn ?? (() => random(-10, 10));
+
+  const c = color(baseColor);
+  let h = floor(hue(c) + hueFn()) % 360;
+  let s = constrain(saturation(c) + floor(satFn()), 0, 100);
+  let l = constrain(lightness(c) + floor(lightFn()), 0, 100);
   return `hsl(${h}, ${s}%, ${l}%)`;
 }
 
