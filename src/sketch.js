@@ -1,21 +1,22 @@
 // ------- TOP-LEVEL VARIABLES ------------------
 
 const ZOOM = 5;
-var WIDTH = Math.floor(window.innerWidth / ZOOM) + 1;
-var HEIGHT = Math.floor(window.innerHeight / ZOOM) + 1;
-
 const SAND_COLOR = "#dcb159";
 const BACKGROUND_COLOR = "#0d1014";
 const WOOD_COLOR = "#46281d";
 
-var p5Canvas;
-var Canvas = new Grid();
-var isRendering = true;
-
-var currentParticle = "Sand";
+let WIDTH = Math.floor(window.innerWidth / ZOOM) + 1;
+let HEIGHT = Math.floor(window.innerHeight / ZOOM) + 1;
+let p5Canvas;
+let Canvas = new Grid();
+let isRendering = true;
+let currentParticle = "Sand";
 
 // ----------------------------------------------
 
+/**
+ * Handles window resize events by recalculating dimensions and reinitializing.
+ */
 function windowResized() {
   WIDTH = Math.floor(window.innerWidth / ZOOM) + 1;
   HEIGHT = Math.floor(window.innerHeight / ZOOM) + 1;
@@ -23,20 +24,26 @@ function windowResized() {
   setup();
 }
 
+/**
+ * Sets the CSS zoom scale on the canvas element.
+ * @param {p5.Renderer} canvas - The p5.js canvas object.
+ */
 function setZoom(canvas) {
   canvas.elt.style.width = `${WIDTH * ZOOM}px`;
   canvas.elt.style.height = `${HEIGHT * ZOOM}px`;
 }
 
+/**
+ * Initializes the p5.js sketch, canvas, and UI buttons.
+ */
 function setup() {
-  //Disable normal right-clicking behavior
-  for (let element of document.getElementsByClassName("p5Canvas")) {
-    element.addEventListener("contextmenu", (e) => e.preventDefault());
-  }
+  // Disable context menu on canvas
+  document.querySelectorAll(".p5Canvas").forEach((el) => {
+    el.addEventListener("contextmenu", (e) => e.preventDefault());
+  });
 
-  // Remove existing buttons if they exist
-  let buttons = document.querySelectorAll("button");
-  buttons.forEach((button) => button.remove());
+  // Remove existing buttons
+  document.querySelectorAll("button").forEach((btn) => btn.remove());
 
   frameRate(60);
   pixelDensity(window.devicePixelRatio);
@@ -50,50 +57,52 @@ function setup() {
 
   Canvas.initialize(WIDTH, HEIGHT);
 
-  let sandButton = createButton("SAND");
-  sandButton.size(80, 30);
-  sandButton.position(0, 5);
-  sandButton.mousePressed(sandButtonPress);
-  sandButton.style("background-color", SAND_COLOR);
-
-  let woodButton = createButton("WOOD");
-  woodButton.size(80, 30);
-  woodButton.position(80, 5);
-  woodButton.mousePressed(woodButtonPress);
-  woodButton.style("background-color", WOOD_COLOR);
-  woodButton.style("color", "#FAF9F6");
-
-  let emptyButton = createButton("EMPTY");
-  emptyButton.size(80, 30);
-  emptyButton.position(160, 5);
-  emptyButton.mousePressed(emptyButtonPress);
-  emptyButton.style("background-color", BACKGROUND_COLOR);
-  emptyButton.style("color", "#FAF9F6");
-
-  let clearButton = createButton("CLEAR");
-  clearButton.size(80, 30);
-  clearButton.position(240, 5);
-  clearButton.mousePressed(clearButtonPress);
-  clearButton.style("background-color", BACKGROUND_COLOR);
-  clearButton.style("color", "#FAF9F6");
+  createParticleButton(
+    "SAND",
+    0,
+    SAND_COLOR,
+    null,
+    () => (currentParticle = "Sand"),
+  );
+  createParticleButton(
+    "WOOD",
+    80,
+    WOOD_COLOR,
+    "#FAF9F6",
+    () => (currentParticle = "Wood"),
+  );
+  createParticleButton(
+    "EMPTY",
+    160,
+    BACKGROUND_COLOR,
+    "#FAF9F6",
+    () => (currentParticle = "Empty"),
+  );
+  createParticleButton("CLEAR", 240, BACKGROUND_COLOR, "#FAF9F6", () =>
+    Canvas.clear(),
+  );
 }
 
-function sandButtonPress() {
-  currentParticle = "Sand";
+/**
+ * Creates a styled UI button for particle selection.
+ * @param {string} label - The button text.
+ * @param {number} xPos - The x position of the button.
+ * @param {string} bgColor - The background color.
+ * @param {string|null} textColor - The text color, or null for default.
+ * @param {Function} onClick - The click handler.
+ */
+function createParticleButton(label, xPos, bgColor, textColor, onClick) {
+  const btn = createButton(label);
+  btn.size(80, 30);
+  btn.position(xPos, 5);
+  btn.mousePressed(onClick);
+  btn.style("background-color", bgColor);
+  if (textColor) btn.style("color", textColor);
 }
 
-function emptyButtonPress() {
-  currentParticle = "Empty";
-}
-
-function clearButtonPress() {
-  Canvas.clear();
-}
-
-function woodButtonPress() {
-  currentParticle = "Wood";
-}
-
+/**
+ * Main draw loop - updates and renders the simulation.
+ */
 function draw() {
   Canvas.draw();
   Canvas.update();
@@ -101,7 +110,6 @@ function draw() {
   drawMouseCircle(3, particleColor());
 
   if (mouseIsPressed) {
-    // Left Click - Make some sand!
     if (mouseButton === LEFT) {
       Canvas.setCircle(
         getMousePixelX(),
@@ -110,116 +118,150 @@ function draw() {
         2,
         0.5,
       );
-    }
-    // Right Click - Clear the Canvas
-    if (mouseButton === RIGHT) {
+    } else if (mouseButton === RIGHT) {
       Canvas.clear();
     }
   }
 
-  // Pause all rendering unless Sandspiel is being interacted with
   if (!Canvas.needsUpdate()) {
     pause();
   }
 
+  // Draw title
   fill(SAND_COLOR);
   textSize(width / 13);
   textAlign(CENTER, TOP);
   text("SANDSPIEL", width / 2, 10);
 }
 
+/**
+ * Draws a circle indicator at the mouse position.
+ * @param {number} radius - The circle radius.
+ * @param {string} particleColor - The fill color.
+ */
 function drawMouseCircle(radius, particleColor) {
   fill(particleColor);
-  stroke("#fff");
-  if (particleColor !== Empty.baseColor) {
+  if (particleColor === Empty.baseColor) {
+    stroke("#fff");
+  } else {
     noStroke();
   }
   circle(getMousePixelX(), getMousePixelY(), 2 * radius);
   noStroke();
 }
 
-const makeParticle = () => {
-  if (currentParticle == "Sand") {
-    return () => new Sand(color(varyColor(SAND_COLOR)));
-  } else if (currentParticle == "Empty") {
-    return () => new Empty();
-  } else if (currentParticle == "Wood") {
-    return () => new Wood(color(varyColor(WOOD_COLOR)));
-  } else {
-    return;
-  }
-};
+/**
+ * Returns a factory function for creating the currently selected particle type.
+ * @returns {Function|undefined} A function that creates a particle.
+ */
+function makeParticle() {
+  const particleFactories = {
+    Sand: () => new Sand(varyColor(SAND_COLOR)),
+    Empty: () => new Empty(),
+    Wood: () => new Wood(varyColor(WOOD_COLOR)),
+  };
+  return particleFactories[currentParticle];
+}
 
-const particleColor = () => {
-  if (currentParticle == "Sand") {
-    return SAND_COLOR;
-  } else if (currentParticle == "Empty") {
-    return BACKGROUND_COLOR;
-  } else if (currentParticle == "Wood") {
-    return WOOD_COLOR;
-  } else {
-    return;
-  }
-};
+/**
+ * Gets the color of the currently selected particle type.
+ * @returns {string|undefined} The particle color.
+ */
+function particleColor() {
+  const colors = {
+    Sand: SAND_COLOR,
+    Empty: BACKGROUND_COLOR,
+    Wood: WOOD_COLOR,
+  };
+  return colors[currentParticle];
+}
 
-// Translate mouse coordinates to the pixel grid
+/**
+ * Gets the mouse X position constrained to the canvas.
+ * @returns {number} The x pixel coordinate.
+ */
 const getMousePixelX = () => floor(constrain(mouseX, 0, width - 1));
+
+/**
+ * Gets the mouse Y position constrained to the canvas.
+ * @returns {number} The y pixel coordinate.
+ */
 const getMousePixelY = () => floor(constrain(mouseY, 0, height - 1));
 
-// Translate a grid pixel index to a p5.js pixel
-const setPixel = (i, color) => {
+/**
+ * Sets a pixel in the p5.js pixel array.
+ * @param {number} i - The pixel index.
+ * @param {p5.Color} color - The color to set.
+ */
+function setPixel(i, color) {
   const index = 4 * i;
   pixels[index] = red(color);
   pixels[index + 1] = green(color);
   pixels[index + 2] = blue(color);
   pixels[index + 3] = alpha(color);
-};
+}
 
-// Clear all pixels on the p5.js canvas
-const clearPixels = () => {
-  for (let i = 0; i < pixels.length / 4; i += 1) {
-    setPixel(i, color(BACKGROUND_COLOR));
+/**
+ * Clears all pixels on the p5.js canvas to the background color.
+ */
+function clearPixels() {
+  const bgColor = color(BACKGROUND_COLOR);
+  for (let i = 0; i < pixels.length / 4; i++) {
+    setPixel(i, bgColor);
   }
   updatePixels();
-};
+}
 
-// Slightly vary the hsl value of a given color
-const varyColor = (color) => {
-  let pixel_hue = floor(hue(color));
-  let pixel_saturation = saturation(color) + floor(random(-20, 0));
-  pixel_saturation = constrain(pixel_saturation, 0, 100);
-  let pixel_lightness = lightness(color) + floor(random(-10, 10));
-  pixel_lightness = constrain(pixel_lightness, 0, 100);
-  return `hsl(${pixel_hue}, ${pixel_saturation}%, ${pixel_lightness}%)`;
-};
+/**
+ * Slightly varies the HSL values of a color for visual variety.
+ * @param {string} baseColor - The base color to vary.
+ * @returns {string} A varied HSL color string.
+ */
+function varyColor(baseColor) {
+  const h = floor(hue(baseColor));
+  const s = constrain(saturation(baseColor) + floor(random(-20, 0)), 0, 100);
+  const l = constrain(lightness(baseColor) + floor(random(-10, 10)), 0, 100);
+  return `hsl(${h}, ${s}%, ${l}%)`;
+}
 
 // --------------------------- PAUSING + RESUMING -----------------------------------------
-const resume = () => {
+
+/**
+ * Resumes the draw loop if paused.
+ */
+function resume() {
   if (!isRendering) {
     loop();
     isRendering = true;
   }
-};
+}
 
-const pause = () => {
+/**
+ * Pauses the draw loop if running.
+ */
+function pause() {
   if (isRendering) {
     noLoop();
     isRendering = false;
   }
-};
+}
 
+/** Resumes rendering when mouse is dragged. */
 function mouseDragged() {
   resume();
 }
 
+/** Resumes rendering when mouse is moved. */
 function mouseMoved() {
   resume();
 }
 
+/** Resumes rendering when mouse is pressed. */
 function mousePressed() {
   resume();
 }
 
+/** Resumes rendering when touch starts. */
 function touchStarted() {
   resume();
 }

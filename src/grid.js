@@ -1,154 +1,168 @@
+/**
+ * Represents a 2D grid of particles for the Sandspiel simulation.
+ */
 class Grid {
+  /**
+   * Initializes the grid with the specified dimensions.
+   * @param {number} width - The width of the grid in cells.
+   * @param {number} height - The height of the grid in cells.
+   */
   initialize(width, height) {
     this.width = width;
     this.height = height;
     this.clear();
-
     this.modifiedIndices = new Set();
     this.cleared = false;
-
     this.rowCount = Math.floor(this.grid.length / this.width);
   }
 
-  // Update all pixels in the grid
+  /**
+   * Updates all particles in the grid from bottom to top,
+   * with random left-to-right or right-to-left traversal per row.
+   */
   update() {
     this.cleared = false;
-    this.modifiedIndices = new Set();
+    this.modifiedIndices.clear();
 
-    // Draw from the end of the list to the beginning
     for (let row = this.rowCount - 1; row >= 0; row--) {
       const rowOffset = row * this.width;
       const leftToRight = Math.random() > 0.5;
+
       for (let i = 0; i < this.width; i++) {
-        // Go from right to left or left to right depending on our random value
-        const columnOffset = leftToRight ? i : -i - 1 + this.width;
-        let index = rowOffset + columnOffset;
-
-        if (this.isEmpty(index)) {
-          continue;
-        }
-
-        const currentParticle = this.grid[index];
-        currentParticle.update();
-
-        if (!currentParticle.modified) {
-          continue;
-        }
-
-        this.modifiedIndices.add(index);
-        for (let v = 0; v < currentParticle.getUpdateCount(); v++) {
-          const newIndex = this.updatePixel(index);
-          if (newIndex !== index) {
-            index = newIndex;
-          } else {
-            currentParticle.resetVelocity(); // Collision with another particle
-            break;
-          }
-        }
+        const columnOffset = leftToRight ? i : this.width - 1 - i;
+        const index = rowOffset + columnOffset;
+        this.grid[index].update(this);
       }
     }
   }
 
-  // Update a single pixel in the grid
-  updatePixel(i) {
-    const below = i + this.width;
-    const belowLeft = below - 1;
-    const belowRight = below + 1;
-    const column = i % this.width;
-
-    // If there are no pixels below, move it down;
-    // if there pixels down but no pixels diagonally, move the sand diagonally
-    if (this.isEmpty(below)) {
-      this.swap(i, below);
-      return below;
-    } else if (this.isEmpty(belowLeft) && belowLeft % this.width < column) {
-      this.swap(i, belowLeft);
-      return belowLeft;
-    } else if (this.isEmpty(belowRight) && belowRight % this.width > column) {
-      this.swap(i, belowRight);
-      return belowRight;
-    }
-
-    return i;
-  }
-
-  // Decide whether or not the grid should be updated (to save computation time)
+  /**
+   * Determines if the grid needs to be redrawn.
+   * @returns {boolean} True if the grid was cleared or has modified indices.
+   */
   needsUpdate() {
-    return this.cleared || this.modifiedIndices.size;
+    return this.cleared || this.modifiedIndices.size > 0;
   }
 
-  // Draw the grid onto the p5.js canvas
+  /**
+   * Draws the grid onto the p5.js canvas by updating only modified pixels.
+   */
   draw() {
     if (this.cleared) {
       clearPixels();
-    } else if (this.modifiedIndices.size) {
+    } else {
       this.modifiedIndices.forEach((index) => {
         setPixel(index, this.grid[index].color || color(BACKGROUND_COLOR));
       });
     }
   }
 
-  // Set a group of particles at the given coordinates and radius,
-  // with each granule having a percent change to spawn
+  /**
+   * Sets particles in a circular area with optional probability.
+   * @param {number} x - The center x coordinate.
+   * @param {number} y - The center y coordinate.
+   * @param {Function} createParticle - Factory function to create a particle.
+   * @param {number} [radius=2] - The radius of the circle.
+   * @param {number} [probability=1] - The probability (0-1) of spawning each particle.
+   */
   setCircle(x, y, createParticle, radius = 2, probability = 1) {
-    let radiusSq = radius * radius;
-    for (let y1 = -radius; y1 <= radius; y1++) {
-      for (let x1 = -radius; x1 <= radius; x1++) {
-        if (x1 * x1 + y1 * y1 <= radiusSq && Math.random() < probability) {
-          this.set(x + x1, y + y1, createParticle());
+    const radiusSq = radius * radius;
+
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        if (dx * dx + dy * dy <= radiusSq && Math.random() < probability) {
+          this.set(x + dx, y + dy, createParticle());
         }
       }
     }
   }
 
-  // Set the particle at the given index to an Empty Particle
+  /**
+   * Clears the particle at the given index by replacing it with an Empty particle.
+   * @param {number} i - The index to clear.
+   */
   clearIndex(i) {
     this.setIndex(i, new Empty());
   }
 
-  // Set an index at the given x and y coordinate to the given particle
+  /**
+   * Sets a particle at the given x and y coordinates.
+   * @param {number} x - The x coordinate.
+   * @param {number} y - The y coordinate.
+   * @param {Particle} particle - The particle to set.
+   * @returns {number} -1 if out of bounds, undefined otherwise.
+   */
   set(x, y, particle) {
-    const index = this.index(x, y);
-    // Bounds check
-    if (x < 0 || x >= this.width) return -1;
-    if (y < 0 || y >= this.height) return -1;
-    this.setIndex(index, particle);
+    if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
+      return -1;
+    }
+    this.setIndex(this.index(x, y), particle);
   }
 
-  // Return the 1D index of the given x and y coordinate
+  /**
+   * Converts 2D coordinates to a 1D grid index.
+   * @param {number} x - The x coordinate.
+   * @param {number} y - The y coordinate.
+   * @returns {number} The 1D index.
+   */
   index(x, y) {
     return y * this.width + x;
   }
 
-  // Set an index n the grid to a given particle
+  /**
+   * Sets a particle at the given grid index.
+   * @param {number} i - The grid index.
+   * @param {Particle} particle - The particle to set.
+   */
   setIndex(i, particle) {
     this.grid[i] = particle;
+    particle.index = i;
     this.modifiedIndices.add(i);
   }
 
-  // Swap two particles
+  /**
+   * Swaps two particles at the given indices.
+   * @param {number} a - The first index.
+   * @param {number} b - The second index.
+   */
   swap(a, b) {
     if (this.grid[a].empty && this.grid[b].empty) {
       return;
     }
 
-    const temp = this.grid[a];
-    this.grid[a] = this.grid[b];
-    this.setIndex(a, this.grid[b]);
-    this.setIndex(b, temp);
+    [this.grid[a], this.grid[b]] = [this.grid[b], this.grid[a]];
+    this.grid[a].index = a;
+    this.grid[b].index = b;
+    this.modifiedIndices.add(a);
+    this.modifiedIndices.add(b);
   }
 
-  // Clear the grid - using a 1D Array for better compatibility with p5.js
+  /**
+   * Clears the entire grid, filling it with Empty particles.
+   */
   clear() {
-    this.grid = new Array(this.width * this.height)
-      .fill(0)
-      .map(() => new Empty());
-
+    this.grid = Array.from({ length: this.width * this.height }, (_, i) => {
+      const empty = new Empty();
+      empty.index = i;
+      return empty;
+    });
     this.cleared = true;
   }
 
-  // Check if a particle exists in a space
+  /**
+   * Checks if a grid cell is empty.
+   * @param {number} index - The grid index to check.
+   * @returns {boolean} True if the cell is empty.
+   */
   isEmpty(index) {
     return this.grid[index]?.empty ?? false;
+  }
+
+  /**
+   * Marks an index as modified for rendering.
+   * @param {number} index - The grid index to mark.
+   */
+  onModified(index) {
+    this.modifiedIndices.add(index);
   }
 }
