@@ -1,4 +1,5 @@
 /* eslint-disable no-unused-vars */
+/* eslint-disable no-undef */
 /**
  * Base class for particle behaviors.
  */
@@ -79,11 +80,16 @@ class MovesVertically extends Behavior {
   }
 
   /**
-   * Determines if this particle can pass through another.
-   * @param {Particle} particle - The particle to check.
+   * Determines if this particle can pass through another position.
+   * @param {Particle} particle - The particle at the target position.
+   * @param {number} index - The target grid index.
    * @returns {boolean} True if passage is allowed.
    */
-  canPassThrough(particle) {
+  canPassThrough(particle, index) {
+    // Check if blocked by text (if collidesWithText function exists)
+    if (collidesWithText(index)) {
+      return false;
+    }
     return particle?.empty ?? false;
   }
 
@@ -131,7 +137,7 @@ class MovesVertically extends Behavior {
       return { moves, weights };
     }
 
-    if (this.canPassThrough(grid.grid[nextVertical])) {
+    if (this.canPassThrough(grid.grid[nextVertical], nextVertical)) {
       moves.push(nextVertical);
       weights.push(2);
     } else {
@@ -143,7 +149,7 @@ class MovesVertically extends Behavior {
       if (
         nextLeft >= 0 &&
         Math.floor(nextLeft / grid.width) === nextRow &&
-        this.canPassThrough(grid.grid[nextLeft])
+        this.canPassThrough(grid.grid[nextLeft], nextLeft)
       ) {
         moves.push(nextLeft);
         weights.push(1);
@@ -153,7 +159,7 @@ class MovesVertically extends Behavior {
       if (
         nextRight < grid.grid.length &&
         Math.floor(nextRight / grid.width) === nextRow &&
-        this.canPassThrough(grid.grid[nextRight])
+        this.canPassThrough(grid.grid[nextRight], nextRight)
       ) {
         moves.push(nextRight);
         weights.push(1);
@@ -193,13 +199,16 @@ class MovesVertically extends Behavior {
     const right = i + 1;
 
     // Check left
-    if (currentCol > 0 && this.canPassThrough(grid.grid[left])) {
+    if (currentCol > 0 && this.canPassThrough(grid.grid[left], left)) {
       moves.push(left);
       weights.push(1);
     }
 
     // Check right
-    if (currentCol < grid.width - 1 && this.canPassThrough(grid.grid[right])) {
+    if (
+      currentCol < grid.width - 1 &&
+      this.canPassThrough(grid.grid[right], right)
+    ) {
       moves.push(right);
       weights.push(1);
     }

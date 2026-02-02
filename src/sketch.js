@@ -15,6 +15,9 @@ let Canvas = new Grid();
 let isRendering = true;
 let currentParticle = "Sand";
 
+let textBuffer;
+let textPixels;
+
 // ----------------------------------------------
 
 /**
@@ -37,6 +40,45 @@ function setZoom(canvas) {
 }
 
 /**
+ * Creates the text collision buffer and renders the title text.
+ */
+function createTextBuffer() {
+  if (textBuffer) {
+    textBuffer.remove();
+  }
+
+  textBuffer = createGraphics(WIDTH, HEIGHT);
+  textBuffer.pixelDensity(1);
+  updateTextBuffer();
+}
+
+/**
+ * Updates the text buffer with the current title.
+ */
+function updateTextBuffer() {
+  textBuffer.background(0);
+  textBuffer.fill(255);
+  textBuffer.noStroke();
+  textBuffer.textSize(floor(WIDTH / 13));
+  textBuffer.textAlign(CENTER, TOP);
+  textBuffer.text("SANDSPIEL!", WIDTH / 2, 10);
+  textBuffer.loadPixels();
+  textPixels = textBuffer.pixels;
+}
+
+/**
+ * Checks if a grid position collides with the text.
+ * @param {number} index - The grid index to check.
+ * @returns {boolean} True if the position overlaps with text.
+ */
+function collidesWithText(index) {
+  if (!textPixels) return false;
+
+  const pixelIndex = index * 4;
+  return textPixels[pixelIndex] > 128; // Check red channel (grayscale)
+}
+
+/**
  * Initializes the p5.js sketch, canvas, and UI buttons.
  */
 function setup() {
@@ -49,7 +91,7 @@ function setup() {
   document.querySelectorAll("button").forEach((btn) => btn.remove());
 
   frameRate(60);
-  pixelDensity(window.devicePixelRatio);
+  pixelDensity(1);
 
   p5Canvas = createCanvas(WIDTH, HEIGHT);
   setZoom(p5Canvas);
@@ -59,6 +101,7 @@ function setup() {
   noCursor();
 
   Canvas.initialize(WIDTH, HEIGHT);
+  createTextBuffer();
 
   createParticleButton(
     "SAND",
@@ -122,6 +165,13 @@ function draw() {
   Canvas.draw();
   Canvas.update();
   updatePixels();
+
+  // Draw title on top of particles
+  fill(SAND_COLOR);
+  textSize(width / 13);
+  textAlign(CENTER, TOP);
+  text("SANDSPIEL!", width / 2, 10);
+
   drawMouseCircle(3, particleColor());
 
   if (mouseIsPressed) {
