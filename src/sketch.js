@@ -7,6 +7,7 @@ const SAND_COLOR = "#dcb159";
 const BACKGROUND_COLOR = "#0d1014";
 const WOOD_COLOR = "#46281d";
 const SMOKE_COLOR = "#4C4A4D";
+const FIRE_COLOR = "#e34f0f";
 
 let WIDTH = Math.floor(window.innerWidth / ZOOM) + 1;
 let HEIGHT = Math.floor(window.innerHeight / ZOOM) + 1;
@@ -120,8 +121,16 @@ function setup() {
     () => (currentParticle = "Wood"),
   );
   createParticleButton(
-    "SMOKE",
+    "FIRE",
     0,
+    30,
+    FIRE_COLOR,
+    "#FAF9F6",
+    () => (currentParticle = "Fire"),
+  );
+  createParticleButton(
+    "SMOKE",
+    80,
     30,
     SMOKE_COLOR,
     "#FAF9F6",
@@ -231,6 +240,7 @@ function makeParticle() {
       });
       return new Smoke(color(variedColor));
     },
+    Fire: () => new Fire(),
   };
   return particleFactories[currentParticle];
 }
@@ -245,6 +255,7 @@ function particleColor() {
     Empty: BACKGROUND_COLOR,
     Wood: WOOD_COLOR,
     Smoke: SMOKE_COLOR,
+    Fire: FIRE_COLOR,
   };
   return colors[currentParticle];
 }

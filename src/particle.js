@@ -389,6 +389,36 @@ class LimitedLife extends Behavior {
 }
 
 /**
+ * Behavior that makes particles flammable
+ * and turn into smoke upon burning out.
+ */
+class Flammable extends LimitedLife {
+  /**
+   * Creates a new Flammable behavior.
+   * @param {Object} [options={}] - Configuration options.
+   * @param {number} [options.fuel] - How long the particle burns (frames).
+   */
+  constructor({ fuel } = {}) {
+    fuel = fuel ?? 10 + 100 * Math.random();
+    const colors = ["#541e1e", "#ff1f1f", "#ea5a00", "#ff6900", "#eecc09"];
+    super(fuel, {
+      onTick: (behavior, particle) => {
+        const frequency = Math.sqrt(behavior.lifetime / behavior.remainingLife);
+        const period = frequency * colors.length;
+        const pct = behavior.remainingLife / period;
+        const colorIndex = Math.floor(pct) % colors.length;
+        particle.color = color(colors[colorIndex]);
+      },
+      onDeath: (_, particle, grid) => {
+        const smoke = new Smoke(Smoke.baseColor);
+        grid.setIndex(particle.index, smoke);
+      },
+    });
+    this.colors = colors;
+  }
+}
+
+/**
  * Base class for all particles in the simulation.
  */
 class Particle {
@@ -433,7 +463,6 @@ class Particle {
  * Sand particle that falls and piles up.
  */
 class Sand extends Particle {
-  /** @type {string} The default sand color. */
   static baseColor = "#dcb159";
 
   /**
@@ -452,7 +481,6 @@ class Sand extends Particle {
  * Empty cell representing vacant space.
  */
 class Empty extends Particle {
-  /** @type {string} The background color. */
   static baseColor = "#0d1014";
 
   /**
@@ -467,7 +495,6 @@ class Empty extends Particle {
  * Wood particle that is stationary.
  */
 class Wood extends Particle {
-  /** @type {string} The default wood color. */
   static baseColor = "#46281d";
 
   /**
@@ -483,7 +510,6 @@ class Wood extends Particle {
  * Smoke particle that rises upward and fades over time.
  */
 class Smoke extends Particle {
-  /** @type {string} The default smoke color. */
   static baseColor = "#4C4A4D";
 
   /**
@@ -519,6 +545,36 @@ class Smoke extends Particle {
           onTick,
           onDeath,
         }),
+      ],
+    });
+  }
+}
+
+/**
+ * Fire particle that is flammable and turns into smoke.
+ */
+class Fire extends Particle {
+  /** @type {string} The default fire color. */
+  static baseColor = "#e34f0f";
+
+  /**
+   * Creates a new fire particle.
+   * @param {string} [colorOverride] - Optional custom color.
+   */
+  constructor(colorOverride) {
+    const flammable = new Flammable();
+    const initialColor = colorOverride ?? Fire.baseColor;
+
+    super({
+      color: color(initialColor),
+      behaviors: [
+        new MovesUp({
+          maxSpeed: 0.3,
+          acceleration: 0.05,
+          drifts: true,
+          driftChance: 0.6,
+        }),
+        flammable,
       ],
     });
   }
