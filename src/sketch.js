@@ -2,7 +2,7 @@
 /* eslint-disable no-undef */
 // ------- TOP-LEVEL VARIABLES ------------------
 
-const ZOOM = 5;
+const ZOOM = 3;
 const SAND_COLOR = "#dcb159";
 const BACKGROUND_COLOR = "#0d1014";
 const WOOD_COLOR = "#46281d";
@@ -63,6 +63,7 @@ function setup() {
   createParticleButton(
     "SAND",
     0,
+    0,
     SAND_COLOR,
     null,
     () => (currentParticle = "Sand"),
@@ -70,26 +71,29 @@ function setup() {
   createParticleButton(
     "WOOD",
     80,
+    0,
     WOOD_COLOR,
     "#FAF9F6",
     () => (currentParticle = "Wood"),
   );
   createParticleButton(
+    "SMOKE",
+    0,
+    30,
+    SMOKE_COLOR,
+    "#FAF9F6",
+    () => (currentParticle = "Smoke"),
+  );
+  createParticleButton(
     "EMPTY",
-    160,
+    0,
+    60,
     BACKGROUND_COLOR,
     "#FAF9F6",
     () => (currentParticle = "Empty"),
   );
-  createParticleButton("CLEAR", 240, BACKGROUND_COLOR, "#FAF9F6", () =>
+  createParticleButton("CLEAR", 80, 60, BACKGROUND_COLOR, "#FAF9F6", () =>
     Canvas.clear(),
-  );
-  createParticleButton(
-    "SMOKE",
-    320,
-    SMOKE_COLOR,
-    "#FAF9F6",
-    () => (currentParticle = "Smoke"),
   );
 }
 
@@ -97,14 +101,15 @@ function setup() {
  * Creates a styled UI button for particle selection.
  * @param {string} label - The button text.
  * @param {number} xPos - The x position of the button.
+ * @param {number} yPos - The y position of the button.
  * @param {string} bgColor - The background color.
  * @param {string|null} textColor - The text color, or null for default.
  * @param {Function} onClick - The click handler.
  */
-function createParticleButton(label, xPos, bgColor, textColor, onClick) {
+function createParticleButton(label, xPos, yPos, bgColor, textColor, onClick) {
   const btn = createButton(label);
   btn.size(80, 30);
-  btn.position(xPos, 5);
+  btn.position(xPos, yPos);
   btn.mousePressed(onClick);
   btn.style("background-color", bgColor);
   if (textColor) btn.style("color", textColor);
@@ -141,7 +146,7 @@ function draw() {
   fill(SAND_COLOR);
   textSize(width / 13);
   textAlign(CENTER, TOP);
-  text("SANDSPIEL", width / 2, 10);
+  text("SANDSPIEL!", width / 2, 10);
 }
 
 /**

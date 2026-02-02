@@ -502,11 +502,11 @@ class Smoke extends Particle {
       behaviors: [
         new MovesUp({
           maxSpeed: 0.5,
-          acceleration: 0.01,
+          acceleration: 0.1,
           drifts: true,
-          driftChance: 30,
+          driftChance: 0.8,
         }),
-        new LimitedLife(10 + 400 * Math.random(), {
+        new LimitedLife(10 + 200 * Math.random(), {
           onTick,
           onDeath,
         }),
