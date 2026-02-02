@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable no-undef */
+
 /**
  * Base class for particle behaviors.
  */
@@ -86,7 +87,6 @@ class MovesVertically extends Behavior {
    * @returns {boolean} True if passage is allowed.
    */
   canPassThrough(particle, index) {
-    // Check if blocked by text (if collidesWithText function exists)
     if (collidesWithText(index)) {
       return false;
     }
@@ -115,7 +115,6 @@ class MovesVertically extends Behavior {
 
     const nextDelta = direction * grid.width;
     const nextVertical = i + nextDelta;
-    const currentRow = Math.floor(i / grid.width);
     const currentCol = i % grid.width;
 
     const moves = [];
@@ -123,16 +122,8 @@ class MovesVertically extends Behavior {
 
     // Check bounds - prevent going above top or below bottom
     if (nextVertical < 0 || nextVertical >= grid.grid.length) {
-      // If drifting enabled, try horizontal movement at boundary
       if (this.drifts && Math.random() < this.driftChance) {
-        this.addHorizontalMoves(
-          grid,
-          i,
-          currentRow,
-          currentCol,
-          moves,
-          weights,
-        );
+        this.addHorizontalMoves(grid, i, currentCol, moves, weights);
       }
       return { moves, weights };
     }
@@ -171,14 +162,7 @@ class MovesVertically extends Behavior {
         this.drifts &&
         Math.random() < this.driftChance
       ) {
-        this.addHorizontalMoves(
-          grid,
-          i,
-          currentRow,
-          currentCol,
-          moves,
-          weights,
-        );
+        this.addHorizontalMoves(grid, i, currentCol, moves, weights);
       }
     }
 
@@ -189,22 +173,19 @@ class MovesVertically extends Behavior {
    * Adds horizontal movement options to the moves array.
    * @param {Grid} grid - The grid containing the particle.
    * @param {number} i - The current index.
-   * @param {number} currentRow - The current row.
    * @param {number} currentCol - The current column.
    * @param {number[]} moves - Array to add moves to.
    * @param {number[]} weights - Array to add weights to.
    */
-  addHorizontalMoves(grid, i, currentRow, currentCol, moves, weights) {
+  addHorizontalMoves(grid, i, currentCol, moves, weights) {
     const left = i - 1;
     const right = i + 1;
 
-    // Check left
     if (currentCol > 0 && this.canPassThrough(grid.grid[left], left)) {
       moves.push(left);
       weights.push(1);
     }
 
-    // Check right
     if (
       currentCol < grid.width - 1 &&
       this.canPassThrough(grid.grid[right], right)
@@ -356,7 +337,7 @@ class LimitedLife extends Behavior {
   constructor(lifetime, { onTick, onDeath } = {}) {
     super();
     this.lifetime = lifetime;
-    this.remainingLife = this.lifetime;
+    this.remainingLife = lifetime;
     this.onTick = onTick ?? (() => {});
     this.onDeath = onDeath ?? (() => {});
   }
@@ -376,7 +357,6 @@ class LimitedLife extends Behavior {
    */
   update(particle, grid) {
     this.onTick(this, particle, grid);
-
     this.remainingLife--;
 
     if (this.remainingLife <= 0) {
@@ -389,32 +369,147 @@ class LimitedLife extends Behavior {
 }
 
 /**
- * Behavior that makes particles flammable
- * and turn into smoke upon burning out.
+ * Calculates the spread likelihood based on various factors.
+ * @param {Object} [options={}] - Configuration options.
+ * @param {number} [options.baseChance=0.1] - Base chance to spread (0-1).
+ * @param {number} [options.fuel=1] - Remaining fuel factor (higher = more spread).
+ * @param {number} [options.neighborCount=1] - Number of burning neighbors.
+ * @returns {number} The calculated spread probability (0-1).
+ */
+function calculateSpreadLikelihood({
+  baseChance = 0.1,
+  fuel = 1,
+  neighborCount = 1,
+} = {}) {
+  const neighborBonus = Math.min(neighborCount * 0.15, 0.5);
+  const fuelBonus = Math.min(fuel / 200, 0.3);
+  return Math.min(baseChance + neighborBonus + fuelBonus, 0.9);
+}
+
+/**
+ * Behavior that makes particles flammable and turn into smoke upon burning out.
  */
 class Flammable extends LimitedLife {
+  static colors = ["#541e1e", "#ff1f1f", "#ea5a00", "#ff6900", "#eecc09"];
+
   /**
    * Creates a new Flammable behavior.
    * @param {Object} [options={}] - Configuration options.
    * @param {number} [options.fuel] - How long the particle burns (frames).
+   * @param {number} [options.chanceToCatch=0.01] - Base chance to catch fire per exposure.
+   * @param {boolean} [options.startBurning=false] - Whether to start already burning.
    */
-  constructor({ fuel } = {}) {
-    fuel = fuel ?? 10 + 100 * Math.random();
-    const colors = ["#541e1e", "#ff1f1f", "#ea5a00", "#ff6900", "#eecc09"];
-    super(fuel, {
+  constructor({ fuel, chanceToCatch = 0.01, startBurning = false } = {}) {
+    const actualFuel = fuel ?? 10 + 100 * Math.random();
+
+    super(actualFuel, {
       onTick: (behavior, particle) => {
         const frequency = Math.sqrt(behavior.lifetime / behavior.remainingLife);
-        const period = frequency * colors.length;
+        const period = frequency * Flammable.colors.length;
         const pct = behavior.remainingLife / period;
-        const colorIndex = Math.floor(pct) % colors.length;
-        particle.color = color(colors[colorIndex]);
+        const colorIndex = Math.floor(pct) % Flammable.colors.length;
+        particle.color = color(Flammable.colors[colorIndex]);
       },
       onDeath: (_, particle, grid) => {
-        const smoke = new Smoke(Smoke.baseColor);
-        grid.setIndex(particle.index, smoke);
+        const isSpark = Math.random() < 0.1;
+        grid.setIndex(particle.index, new Smoke(Smoke.baseColor, isSpark));
       },
     });
-    this.colors = colors;
+
+    this.chanceToCatch = chanceToCatch;
+    this.chancesToCatch = 0;
+    this.burning = startBurning;
+  }
+
+  /**
+   * Checks if this particle is currently burning.
+   * @returns {boolean} True if burning.
+   */
+  isBurning() {
+    return this.burning;
+  }
+
+  /**
+   * Ignites this particle, starting the burning process.
+   */
+  ignite() {
+    this.burning = true;
+  }
+
+  /**
+   * Updates the flammable behavior.
+   * @param {Particle} particle - The particle to update.
+   * @param {Grid} grid - The grid containing the particle.
+   */
+  update(particle, grid) {
+    if (this.chancesToCatch > 0 && !this.burning) {
+      const catchProbability = Math.min(
+        this.chancesToCatch * this.chanceToCatch,
+        0.8,
+      );
+      if (Math.random() < catchProbability) {
+        this.burning = true;
+      }
+      this.chancesToCatch = 0;
+    }
+
+    if (this.burning) {
+      super.update(particle, grid);
+      this.tryToSpread(particle, grid);
+    }
+  }
+
+  /**
+   * Attempts to spread fire to neighboring flammable particles.
+   * @param {Particle} particle - The burning particle.
+   * @param {Grid} grid - The grid containing the particle.
+   */
+  tryToSpread(particle, grid) {
+    const candidates = this.getSpreadCandidates(particle, grid);
+    const spreadChance = calculateSpreadLikelihood({
+      baseChance: 0.1,
+      fuel: this.remainingLife,
+      neighborCount: 1,
+    });
+
+    for (const i of candidates) {
+      const p = grid.grid[i];
+      if (!p) continue;
+
+      const flammable = p.getBehavior(Flammable);
+      if (flammable && !flammable.burning) {
+        flammable.chancesToCatch += spreadChance * (0.5 + Math.random() * 0.5);
+      }
+    }
+  }
+
+  /**
+   * Gets indices of neighboring cells that could catch fire.
+   * @param {Particle} particle - The burning particle.
+   * @param {Grid} grid - The grid containing the particle.
+   * @returns {number[]} Array of candidate indices.
+   */
+  getSpreadCandidates(particle, grid) {
+    const index = particle.index;
+    const column = index % grid.width;
+    const candidates = [];
+
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        if (dx === 0 && dy === 0) continue;
+
+        const di = index + dx + dy * grid.width;
+        const x = di % grid.width;
+        const inBounds = di >= 0 && di < grid.grid.length;
+        const noWrap = Math.abs(x - column) <= 1;
+
+        if (inBounds && noWrap) {
+          candidates.push(di);
+        }
+      }
+    }
+
+    return candidates;
   }
 }
 
@@ -446,7 +541,9 @@ class Particle {
    * @param {Object} [params] - Additional parameters for behaviors.
    */
   update(grid, params) {
-    this.behaviors.forEach((b) => b.update(this, grid, params));
+    for (const behavior of this.behaviors) {
+      behavior.update(this, grid, params);
+    }
   }
 
   /**
@@ -460,6 +557,17 @@ class Particle {
 }
 
 /**
+ * Empty cell representing vacant space.
+ */
+class Empty extends Particle {
+  static baseColor = "#0d1014";
+
+  constructor() {
+    super({ empty: true });
+  }
+}
+
+/**
  * Sand particle that falls and piles up.
  */
 class Sand extends Particle {
@@ -467,83 +575,34 @@ class Sand extends Particle {
 
   /**
    * Creates a new sand particle.
-   * @param {string} [color] - Optional custom color.
+   * @param {string} [baseColor] - Optional custom color.
    */
-  constructor(color) {
+  constructor(baseColor) {
     super({
-      color: color ?? Sand.baseColor,
+      color: baseColor ?? Sand.baseColor,
       behaviors: [new MovesDown({ maxSpeed: 8, acceleration: 0.4 })],
     });
   }
 }
 
 /**
- * Empty cell representing vacant space.
- */
-class Empty extends Particle {
-  static baseColor = "#0d1014";
-
-  /**
-   * Creates a new empty cell.
-   */
-  constructor() {
-    super({ empty: true });
-  }
-}
-
-/**
- * Wood particle that is stationary.
+ * Wood particle that is stationary and flammable.
  */
 class Wood extends Particle {
   static baseColor = "#46281d";
 
   /**
    * Creates a new wood particle.
-   * @param {string} [color] - Optional custom color.
+   * @param {string} [baseColor] - Optional custom color.
    */
-  constructor(color) {
-    super({ color: color ?? Wood.baseColor, behaviors: [] });
-  }
-}
-
-/**
- * Smoke particle that rises upward and fades over time.
- */
-class Smoke extends Particle {
-  static baseColor = "#4C4A4D";
-
-  /**
-   * Creates a new smoke particle.
-   * @param {string} [color] - Optional custom color.
-   */
-  constructor(color) {
-    const onTick = (behavior, particle, grid) => {
-      const pct = behavior.getLifePercent();
-      particle.color.setAlpha(Math.floor(255 * pct));
-    };
-
-    const onDeath = (_, particle, grid) => {
-      grid.clearIndex(particle.index);
-    };
-
-    // Convert color string to p5.Color so setAlpha works
-    const smokeColor =
-      typeof color === "string"
-        ? window.color(color)
-        : (color ?? window.color(Smoke.baseColor));
-
+  constructor(baseColor) {
     super({
-      color: smokeColor,
+      color: baseColor ?? Wood.baseColor,
       behaviors: [
-        new MovesUp({
-          maxSpeed: 0.5,
-          acceleration: 0.1,
-          drifts: true,
-          driftChance: 0.8,
-        }),
-        new LimitedLife(10 + 200 * Math.random(), {
-          onTick,
-          onDeath,
+        new Flammable({
+          fuel: 200 + 100 * Math.random(),
+          chanceToCatch: 0.02,
+          startBurning: false,
         }),
       ],
     });
@@ -551,10 +610,128 @@ class Smoke extends Particle {
 }
 
 /**
- * Fire particle that is flammable and turns into smoke.
+ * Smoke particle that rises upward and fades over time.
+ * Has a chance to be a spark that falls instead.
+ */
+class Smoke extends Particle {
+  static baseColor = "#4C4A4D";
+  static sparkColors = ["#ff6600", "#ff9900", "#ffcc00", "#ffff66"];
+
+  /**
+   * Creates a new smoke particle.
+   * @param {string|p5.Color} [baseColor] - Optional custom color.
+   * @param {boolean} [isSpark=false] - Whether this is a burning spark.
+   */
+  constructor(baseColor, isSpark = false) {
+    const isSparkParticle = isSpark || Math.random() < 0.15;
+    const lifetime = isSparkParticle
+      ? 5 + 30 * Math.random()
+      : 10 + 200 * Math.random();
+
+    const smokeColor = Smoke.createColor(baseColor, isSparkParticle);
+    const behaviors = Smoke.createBehaviors(isSparkParticle, lifetime);
+
+    super({
+      color: smokeColor,
+      behaviors,
+    });
+
+    this.isSpark = isSparkParticle;
+  }
+
+  /**
+   * Creates the appropriate color for smoke or spark.
+   * @param {string|p5.Color} baseColor - Base color input.
+   * @param {boolean} isSparkParticle - Whether this is a spark.
+   * @returns {p5.Color} The created color.
+   */
+  static createColor(baseColor, isSparkParticle) {
+    if (isSparkParticle) {
+      const sparkColorIndex = Math.floor(
+        Math.random() * Smoke.sparkColors.length,
+      );
+      return window.color(Smoke.sparkColors[sparkColorIndex]);
+    }
+
+    if (typeof baseColor === "string") {
+      return window.color(baseColor);
+    }
+
+    return baseColor ?? window.color(Smoke.baseColor);
+  }
+
+  /**
+   * Creates behaviors array for smoke or spark.
+   * @param {boolean} isSparkParticle - Whether this is a spark.
+   * @param {number} lifetime - The particle lifetime.
+   * @returns {Behavior[]} Array of behaviors.
+   */
+  static createBehaviors(isSparkParticle, lifetime) {
+    const behaviors = [];
+
+    // Movement behavior
+    if (isSparkParticle) {
+      behaviors.push(
+        new MovesDown({
+          maxSpeed: 1.5,
+          acceleration: 0.2,
+          drifts: true,
+          driftChance: 0.9,
+        }),
+      );
+    } else {
+      behaviors.push(
+        new MovesUp({
+          maxSpeed: 0.5,
+          acceleration: 0.1,
+          drifts: true,
+          driftChance: 0.8,
+        }),
+      );
+    }
+
+    // Sparks are flammable
+    if (isSparkParticle) {
+      behaviors.push(
+        new Flammable({
+          fuel: lifetime,
+          chanceToCatch: 0.05,
+          startBurning: true,
+        }),
+      );
+    }
+
+    // Life behavior with tick and death handlers
+    behaviors.push(
+      new LimitedLife(lifetime, {
+        onTick: (behavior, particle) => {
+          const pct = behavior.getLifePercent();
+
+          if (particle.isSpark) {
+            const sparkColorIndex = Math.floor(
+              Math.random() * Smoke.sparkColors.length,
+            );
+            const sparkColor = window.color(Smoke.sparkColors[sparkColorIndex]);
+            sparkColor.setAlpha(Math.floor(255 * pct));
+            particle.color = sparkColor;
+          } else {
+            particle.color.setAlpha(Math.floor(255 * pct));
+          }
+        },
+        onDeath: (_, particle, grid) => {
+          grid.clearIndex(particle.index);
+        },
+      }),
+    );
+
+    return behaviors;
+  }
+}
+
+/**
+ * Fire particle that burns and spreads to flammable materials.
  */
 class Fire extends Particle {
-  /** @type {string} The default fire color. */
   static baseColor = "#e34f0f";
 
   /**
@@ -562,7 +739,6 @@ class Fire extends Particle {
    * @param {string} [colorOverride] - Optional custom color.
    */
   constructor(colorOverride) {
-    const flammable = new Flammable();
     const initialColor = colorOverride ?? Fire.baseColor;
 
     super({
@@ -574,7 +750,11 @@ class Fire extends Particle {
           drifts: true,
           driftChance: 0.6,
         }),
-        flammable,
+        new Flammable({
+          fuel: 30 + 70 * Math.random(),
+          chanceToCatch: 1,
+          startBurning: true,
+        }),
       ],
     });
   }

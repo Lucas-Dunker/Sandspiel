@@ -232,7 +232,12 @@ function makeParticle() {
   const particleFactories = {
     Sand: () => new Sand(varyColor(SAND_COLOR)),
     Empty: () => new Empty(),
-    Wood: () => new Wood(varyColor(WOOD_COLOR)),
+    Wood: () => {
+      const variedColor = varyColor(WOOD_COLOR, {
+        lightFn: () => random(-6, 10),
+      });
+      return new Wood(color(variedColor));
+    },
     Smoke: () => {
       const variedColor = varyColor(SMOKE_COLOR, {
         lightFn: () => random(-5, 5),
