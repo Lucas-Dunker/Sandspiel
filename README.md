@@ -2,6 +2,8 @@
 
 A miniature falling sand physics simulation built with p5.js. Interact with sand, wood, smoke, and fire!
 
+![Sandspiel-Demo](https://github.com/user-attachments/assets/9b53b5de-f693-4b5f-a747-f600a088255d)
+
 ## How to Play
 
 Click and drag on the canvas to place particles. Use the buttons to select different particle types. Right click to clear the canvas of particles.
@@ -69,3 +71,4 @@ Feel free to contribute and add your own particles!
 Inspired by the classic [Falling Sand Game](https://en.wikipedia.org/wiki/Falling-sand_game) and [Sandspiel.club](https://sandspiel.club/).
 
 jason.today's [falling sand tutorials](https://jason.today/falling-sand) were heavily utilized and are highly recommended!
+
