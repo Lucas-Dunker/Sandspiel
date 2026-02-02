@@ -60,9 +60,9 @@ function updateTextBuffer() {
   textBuffer.background(0);
   textBuffer.fill(255);
   textBuffer.noStroke();
-  textBuffer.textSize(floor(WIDTH / 13));
+  textBuffer.textSize(floor(WIDTH / 15));
   textBuffer.textAlign(CENTER, TOP);
-  textBuffer.text("SANDSPIEL!", WIDTH / 2, 10);
+  textBuffer.text("SANDSPIEL", WIDTH / 2, 10);
   textBuffer.loadPixels();
   textPixels = textBuffer.pixels;
 }
@@ -175,12 +175,6 @@ function draw() {
   Canvas.update();
   updatePixels();
 
-  // Draw title on top of particles
-  fill(SAND_COLOR);
-  textSize(width / 13);
-  textAlign(CENTER, TOP);
-  text("SANDSPIEL!", width / 2, 10);
-
   drawMouseCircle(3, particleColor());
 
   if (mouseIsPressed) {
@@ -203,9 +197,9 @@ function draw() {
 
   // Draw title
   fill(SAND_COLOR);
-  textSize(width / 13);
+  textSize(floor(WIDTH / 15));
   textAlign(CENTER, TOP);
-  text("SANDSPIEL!", width / 2, 10);
+  text("SANDSPIEL", WIDTH / 2, 10);
 }
 
 /**
